@@ -8,7 +8,7 @@ A simple student management system built with the MERN stack (MongoDB, Express.j
 
 ## Application Images
 
-### 0. API Endpoints
+### 0. Search Filters Added
 ![API Endpoints](https://github.com/SA-Ntlanganiso/ERISN-Task/blob/main/seacrh-filte_get_endpoint.PNG)
 
 ### 1. API Endpoints
@@ -25,6 +25,9 @@ A simple student management system built with the MERN stack (MongoDB, Express.j
 
 ### 5. Successful Database Operation
 ![Successful Database Storage](https://github.com/SA-Ntlanganiso/ERISN-Task/blob/main/successful-db-storing.PNG)
+
+### 6. Frontend UI/UX added
+![Successful Database Storage](https://github.com/SA-Ntlanganiso/ERISN-Task/blob/main/complete_UI.PNG)
 
 ## Features
 - Create, Read, Update, and Delete student records

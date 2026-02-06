@@ -74,6 +74,8 @@ function StudentRegister() {
       setFormData({ fullName: '', email: '', course: '' });
       setEditingId(null);
       setIsFormVisible(false);
+      // Refresh the list after creating/updating
+      fetchStudents();
     } catch (error) {
       setError(error.message);
       alert('Failed to save student. Please try again.');
@@ -104,6 +106,9 @@ function StudentRegister() {
 
       if (response.ok) {
         setStudents(students.filter(student => 
+          extractId(student._id) !== idString
+        ));
+        setFilteredStudents(filteredStudents.filter(student => 
           extractId(student._id) !== idString
         ));
         alert('Student deleted successfully!');
@@ -146,24 +151,35 @@ function StudentRegister() {
       let url = 'http://localhost:8080/api/students';
       let params = new URLSearchParams();
       
-      if (searchParams.keyword) {
-        url = 'http://localhost:8080/api/students/search';
-        params.append('keyword', searchParams.keyword);
-      } else if (searchParams.name) {
-        url = 'http://localhost:8080/api/students/search/name';
-        params.append('name', searchParams.name);
-      } else if (searchParams.email) {
-        url = 'http://localhost:8080/api/students/search/email';
-        params.append('email', searchParams.email);
-      } else if (searchParams.course) {
-        url = 'http://localhost:8080/api/students/search/course';
-        params.append('course', searchParams.course);
+      // Check if searchParams is empty (clear/fetch all)
+      const hasSearchParams = Object.keys(searchParams).length > 0;
+      
+      if (hasSearchParams) {
+        if (searchParams.keyword) {
+          url = 'http://localhost:8080/api/students/search';
+          params.append('keyword', searchParams.keyword);
+        } else if (searchParams.name) {
+          url = 'http://localhost:8080/api/students/search/name';
+          params.append('name', searchParams.name);
+        } else if (searchParams.email) {
+          url = 'http://localhost:8080/api/students/search/email';
+          params.append('email', searchParams.email);
+        } else if (searchParams.course) {
+          url = 'http://localhost:8080/api/students/search/course';
+          params.append('course', searchParams.course);
+        }
       }
       
-      const response = await fetch(`${url}?${params.toString()}`);
+      const finalUrl = hasSearchParams ? `${url}?${params.toString()}` : url;
+      const response = await fetch(finalUrl);
+      
       if (response.ok) {
         const data = await response.json();
         setFilteredStudents(data);
+        // Also update students array if fetching all
+        if (!hasSearchParams) {
+          setStudents(data);
+        }
       } else {
         throw new Error('Search failed');
       }
@@ -345,7 +361,7 @@ function StudentRegister() {
           <div className="loading">Loading students...</div>
         ) : filteredStudents.length === 0 ? (
           <div className="no-results">
-            {searchQuery ? 
+            {searchQuery || students.length > 0 ? 
               'No students found matching your search.' : 
               'No students registered yet. Add your first student!'
             }

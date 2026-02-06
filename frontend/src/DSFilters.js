@@ -4,94 +4,50 @@ import './DSFilters.css';
 function DSFilters({ onSearch }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('all');
-  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
     
+    // Build search params object based on search type
+    const searchParams = {};
+    
     if (!searchTerm.trim()) {
-      setIsSearching(true);
-      try {
-        const response = await fetch('http://localhost:8080/api/students');
-        if (response.ok) {
-          const data = await response.json();
-          onSearch(data);
-        } else {
-          console.error('Failed to fetch students:', response.status);
-          alert('Failed to fetch students. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error fetching all students:', error);
-        alert('Failed to fetch students. Please try again.');
-      } finally {
-        setIsSearching(false);
-      }
+      // Empty search - trigger fetch all students
+      onSearch({});
       return;
     }
 
-    setIsSearching(true);
-    try {
-      let url;
-      switch (searchType) {
-        case 'name':
-          url = `http://localhost:8080/api/students/search/name?name=${encodeURIComponent(searchTerm)}`;
-          break;
-        case 'email':
-          url = `http://localhost:8080/api/students/search/email?email=${encodeURIComponent(searchTerm)}`;
-          break;
-        case 'course':
-          url = `http://localhost:8080/api/students/search/course?course=${encodeURIComponent(searchTerm)}`;
-          break;
-        case 'all':
-        default:
-          url = `http://localhost:8080/api/students/search?keyword=${encodeURIComponent(searchTerm)}`;
-          break;
-      }
-
-      console.log('Searching with URL:', url);
-      const response = await fetch(url);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Search results:', data);
-        onSearch(data);
-      } else {
-        console.error('Search failed:', response.status);
-        alert('Search failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error searching students:', error);
-      alert('Failed to search students. Please try again.');
-    } finally {
-      setIsSearching(false);
+    // Map search type to appropriate parameter
+    switch (searchType) {
+      case 'name':
+        searchParams.name = searchTerm;
+        break;
+      case 'email':
+        searchParams.email = searchTerm;
+        break;
+      case 'course':
+        searchParams.course = searchTerm;
+        break;
+      case 'all':
+      default:
+        searchParams.keyword = searchTerm;
+        break;
     }
+
+    // Call parent's onSearch with the params object
+    onSearch(searchParams);
   };
 
-  const handleClear = async () => {
+  const handleClear = () => {
     setSearchTerm('');
     setSearchType('all');
-    setIsSearching(true);
-    
-    try {
-      const response = await fetch('http://localhost:8080/api/students');
-      if (response.ok) {
-        const data = await response.json();
-        onSearch(data);
-      } else {
-        console.error('Failed to fetch students:', response.status);
-        alert('Failed to fetch students. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error fetching all students:', error);
-      alert('Failed to fetch students. Please try again.');
-    } finally {
-      setIsSearching(false);
-    }
+    // Trigger fetch all students
+    onSearch({});
   };
 
   return (
     <div className="ds-filters-section">
-      <h3 className="filters-title">Search Students</h3>
+      <h3 className="filters-title">Advanced Search</h3>
       
       <form className="search-form" onSubmit={handleSearch}>
         <div className="search-input-group">
@@ -101,7 +57,6 @@ function DSFilters({ onSearch }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Enter search term..."
-            disabled={isSearching}
           />
           
           <div className="search-options">
@@ -111,7 +66,6 @@ function DSFilters({ onSearch }) {
                 value={searchType} 
                 onChange={(e) => setSearchType(e.target.value)}
                 className="search-select"
-                disabled={isSearching}
               >
                 <option value="all">All Fields</option>
                 <option value="name">Name</option>
@@ -124,15 +78,13 @@ function DSFilters({ onSearch }) {
               <button 
                 type="submit" 
                 className="btn-search"
-                disabled={isSearching}
               >
-                {isSearching ? 'Searching...' : 'Search'}
+                Search
               </button>
               <button 
                 type="button" 
                 className="btn-clear" 
                 onClick={handleClear}
-                disabled={isSearching}
               >
                 Clear
               </button>
@@ -140,8 +92,7 @@ function DSFilters({ onSearch }) {
           </div>
         </div>
       </form>
-      
-     
+   
     </div>
   );
 }

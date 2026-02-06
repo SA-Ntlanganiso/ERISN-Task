@@ -1,7 +1,103 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Student Register Component (inline for now)
+// DSFilters Component
+function DSFilters({ onSearch }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState('all');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    
+    // Build search params object based on search type
+    const searchParams = {};
+    
+    if (!searchTerm.trim()) {
+      // Empty search - trigger fetch all students
+      onSearch({});
+      return;
+    }
+
+    // Map search type to appropriate parameter
+    switch (searchType) {
+      case 'name':
+        searchParams.name = searchTerm;
+        break;
+      case 'email':
+        searchParams.email = searchTerm;
+        break;
+      case 'course':
+        searchParams.course = searchTerm;
+        break;
+      case 'all':
+      default:
+        searchParams.keyword = searchTerm;
+        break;
+    }
+
+    // Call parent's onSearch with the params object
+    onSearch(searchParams);
+  };
+
+  const handleClear = () => {
+    setSearchTerm('');
+    setSearchType('all');
+    // Trigger fetch all students
+    onSearch({});
+  };
+
+  return (
+    <div className="ds-filters-section">
+      <h3 className="filters-title">Advanced Search</h3>
+      
+      <form className="search-form" onSubmit={handleSearch}>
+        <div className="search-input-group">
+          <input
+            type="text"
+            className="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Enter search term..."
+          />
+          
+          <div className="search-options">
+            <div className="search-type-selector">
+              <label>Search by:</label>
+              <select 
+                value={searchType} 
+                onChange={(e) => setSearchType(e.target.value)}
+                className="search-select"
+              >
+                <option value="all">All Fields</option>
+                <option value="name">Name</option>
+                <option value="email">Email</option>
+                <option value="course">Course</option>
+              </select>
+            </div>
+            
+            <div className="search-buttons">
+              <button 
+                type="submit" 
+                className="btn-search"
+              >
+                Search
+              </button>
+              <button 
+                type="button" 
+                className="btn-clear" 
+                onClick={handleClear}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Student Register Component
 function StudentRegister() {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -10,66 +106,24 @@ function StudentRegister() {
   });
 
   const [students, setStudents] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Helper function to extract ID string from various ID formats
   const extractId = (id) => {
-    console.log('=== extractId called ===');
-    console.log('Input id:', id);
-    console.log('typeof id:', typeof id);
-    console.log('id is null?', id === null);
-    console.log('id is undefined?', id === undefined);
-    
-    if (!id) {
-      console.log('→ Returning empty string (id is falsy)');
-      return '';
-    }
-    
-    if (typeof id === 'string') {
-      console.log('→ Returning string:', id);
-      return id;
-    }
-    
-    console.log('Checking for $oid property...');
-    console.log('id.$oid:', id.$oid);
-    console.log('id["$oid"]:', id['$oid']);
-    console.log('Object.keys(id):', Object.keys(id));
-    console.log('JSON.stringify(id):', JSON.stringify(id));
-    
-    if (typeof id === 'object' && id.$oid) {
-      console.log('→ Returning $oid:', id.$oid);
-      return id.$oid;
-    }
-    
-    // Try alternative access methods
-    if (typeof id === 'object' && id['$oid']) {
-      console.log('→ Returning ["$oid"]:', id['$oid']);
-      return id['$oid'];
-    }
-    
-    // Check if it has a toString method that returns something useful
-    if (typeof id === 'object' && id.toString && id.toString() !== '[object Object]') {
-      console.log('→ Returning toString():', id.toString());
-      return id.toString();
-    }
-    
-    const result = String(id);
-    console.log('→ Returning String(id):', result);
-    return result;
+    if (!id) return '';
+    if (typeof id === 'string') return id;
+    if (typeof id === 'object' && id.$oid) return id.$oid;
+    return String(id);
   };
 
   // Helper function to get student ID from student object
   const getStudentId = (student) => {
-    console.log('=== getStudentId called ===');
-    console.log('Student object:', student);
-    console.log('student._id:', student._id);
-    console.log('typeof student._id:', typeof student._id);
-    
-    // Try _id first (MongoDB default), then studentID
-    const result = extractId(student._id || student.studentID || student.id);
-    console.log('getStudentId result:', result);
-    return result;
+    return extractId(student._id || student.studentID || student.id);
   };
 
   const handleChange = (e) => {
@@ -82,11 +136,12 @@ function StudentRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
     try {
       if (editingId) {
         // Update existing student
-        console.log('Updating student with ID:', editingId);
         const response = await fetch(`http://localhost:8080/api/students/${editingId}`, {
           method: 'PUT',
           headers: {
@@ -101,11 +156,15 @@ function StudentRegister() {
             const studentId = getStudentId(student);
             return studentId === editingId ? updatedStudent : student;
           }));
+          setFilteredStudents(filteredStudents.map(student => {
+            const studentId = getStudentId(student);
+            return studentId === editingId ? updatedStudent : student;
+          }));
           alert('Student updated successfully!');
         } else {
           const errorText = await response.text();
           console.error('Update failed:', errorText);
-          alert('Failed to update student. Please try again.');
+          throw new Error('Failed to update student');
         }
       } else {
         // Create new student
@@ -119,12 +178,13 @@ function StudentRegister() {
 
         if (response.ok) {
           const newStudent = await response.json();
-          setStudents([...students, newStudent]);
+          setStudents([newStudent, ...students]);
+          setFilteredStudents([newStudent, ...filteredStudents]);
           alert('Student registered successfully!');
         } else {
           const errorText = await response.text();
           console.error('Create failed:', errorText);
-          alert('Failed to register student. Please try again.');
+          throw new Error('Failed to register student');
         }
       }
 
@@ -135,34 +195,29 @@ function StudentRegister() {
       fetchStudents();
     } catch (error) {
       console.error('Error:', error);
+      setError(error.message);
       alert('Failed to save student. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleEdit = (student) => {
-    console.log('=== handleEdit called ===');
-    console.log('Editing student:', student);
     setFormData({
       fullName: student.fullName,
       email: student.email,
       course: student.course
     });
     const idString = getStudentId(student);
-    console.log('Setting editingId to:', idString);
     setEditingId(idString);
     setIsFormVisible(true);
   };
 
   const handleDelete = async (student) => {
-    console.log('=== handleDelete called ===');
-    console.log('Received student:', student);
-    console.log('typeof student:', typeof student);
-    
     if (window.confirm('Are you sure you want to delete this student?')) {
+      setIsLoading(true);
       try {
         const idString = getStudentId(student);
-        console.log('Deleting student with ID:', idString);
-        console.log('URL will be:', `http://localhost:8080/api/students/${idString}`);
         
         const response = await fetch(`http://localhost:8080/api/students/${idString}`, {
           method: 'DELETE',
@@ -173,40 +228,115 @@ function StudentRegister() {
             const studentId = getStudentId(s);
             return studentId !== idString;
           }));
+          setFilteredStudents(filteredStudents.filter(s => {
+            const studentId = getStudentId(s);
+            return studentId !== idString;
+          }));
           alert('Student deleted successfully!');
         } else {
           const errorText = await response.text();
           console.error('Delete failed:', errorText);
-          alert('Failed to delete student. Please try again.');
+          throw new Error('Failed to delete student');
         }
       } catch (error) {
         console.error('Error:', error);
+        setError(error.message);
         alert('Failed to delete student. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const fetchStudents = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const response = await fetch('http://localhost:8080/api/students');
       if (response.ok) {
         const data = await response.json();
-        console.log('=== Fetched students ===');
-        console.log('Raw data:', data);
-        if (data.length > 0) {
-          console.log('First student:', data[0]);
-          console.log('First student._id:', data[0]._id);
-          console.log('typeof first student._id:', typeof data[0]._id);
-          console.log('First student._id.$oid:', data[0]._id.$oid);
-          console.log('First student._id["$oid"]:', data[0]._id['$oid']);
-        }
+        console.log('Fetched students:', data);
         setStudents(data);
+        setFilteredStudents(data);
       } else {
-        console.error('Failed to fetch students:', response.status);
+        throw new Error('Failed to fetch students');
       }
     } catch (error) {
       console.error('Error fetching students:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleSearch = async (searchParams) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let url = 'http://localhost:8080/api/students';
+      let params = new URLSearchParams();
+      
+      // Check if searchParams is empty (clear/fetch all)
+      const hasSearchParams = Object.keys(searchParams).length > 0;
+      
+      if (hasSearchParams) {
+        if (searchParams.keyword) {
+          url = 'http://localhost:8080/api/students/search';
+          params.append('keyword', searchParams.keyword);
+        } else if (searchParams.name) {
+          url = 'http://localhost:8080/api/students/search/name';
+          params.append('name', searchParams.name);
+        } else if (searchParams.email) {
+          url = 'http://localhost:8080/api/students/search/email';
+          params.append('email', searchParams.email);
+        } else if (searchParams.course) {
+          url = 'http://localhost:8080/api/students/search/course';
+          params.append('course', searchParams.course);
+        }
+      }
+      
+      const finalUrl = hasSearchParams ? `${url}?${params.toString()}` : url;
+      console.log('Searching with URL:', finalUrl);
+      
+      const response = await fetch(finalUrl);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Search results:', data);
+        setFilteredStudents(data);
+        // Also update students array if fetching all
+        if (!hasSearchParams) {
+          setStudents(data);
+        }
+      } else {
+        throw new Error('Search failed');
+      }
+    } catch (error) {
+      console.error('Error searching students:', error);
+      setError(error.message);
+      alert('Search failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickSearch = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredStudents(students);
+      return;
+    }
+    
+    const filtered = students.filter(student => 
+      student.fullName.toLowerCase().includes(query) ||
+      student.email.toLowerCase().includes(query) ||
+      student.course.toLowerCase().includes(query)
+    );
+    setFilteredStudents(filtered);
   };
 
   const toggleForm = () => {
@@ -217,6 +347,15 @@ function StudentRegister() {
     }
   };
 
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -224,14 +363,31 @@ function StudentRegister() {
   return (
     <section className="student-register-section">
       <div className="section-header">
-        <h2 className="section-title">Student Registration</h2>
-        <button 
-          className="btn-toggle-form" 
-          onClick={toggleForm}
-        >
-          {isFormVisible ? 'Cancel' : 'Register New Student'}
-        </button>
+        <h2 className="section-title">Student Management System</h2>
+        <div className="header-actions">
+          <div className="quick-search">
+            <input
+              type="text"
+              placeholder="Quick search..."
+              value={searchQuery}
+              onChange={handleQuickSearch}
+              className="quick-search-input"
+            />
+          </div>
+          <button 
+            className="btn-toggle-form" 
+            onClick={toggleForm}
+          >
+            {isFormVisible ? 'Cancel' : '➕ Add Student'}
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="error-message">
+          Error: {error}
+        </div>
+      )}
 
       {isFormVisible && (
         <div className="registration-form-container">
@@ -247,6 +403,7 @@ function StudentRegister() {
                 onChange={handleChange}
                 placeholder="Enter full name"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -260,6 +417,7 @@ function StudentRegister() {
                 onChange={handleChange}
                 placeholder="Enter email address"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -273,33 +431,92 @@ function StudentRegister() {
                 onChange={handleChange}
                 placeholder="Enter course name"
                 required
+                disabled={isLoading}
               />
             </div>
 
-            <button type="submit" className="btn-submit">
-              {editingId ? 'Update Student' : 'Register Student'}
-            </button>
+            <div className="form-actions">
+              <button type="submit" className="btn-submit" disabled={isLoading}>
+                {isLoading ? 'Processing...' : editingId ? 'Update Student' : 'Register Student'}
+              </button>
+              <button 
+                type="button" 
+                className="btn-cancel" 
+                onClick={toggleForm}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
 
+      {/* Advanced Search Component */}
+      <DSFilters onSearch={handleSearch} />
+
       <div className="students-list">
-        <h3>Registered Students</h3>
-        {students.length === 0 ? (
-          <p className="no-students">No students registered yet.</p>
+        <div className="students-list-header">
+          <h3>Registered Students</h3>
+          <div className="stats">
+            <span className="total-students">
+              Total: {students.length}
+            </span>
+            <span className="showing-students">
+              Showing: {filteredStudents.length}
+            </span>
+            {searchQuery && (
+              <span className="search-indicator">
+                Filter: "{searchQuery}"
+              </span>
+            )}
+          </div>
+        </div>
+
+        {isLoading && !isFormVisible ? (
+          <div className="loading">Loading students...</div>
+        ) : filteredStudents.length === 0 ? (
+          <p className="no-students">
+            {searchQuery || students.length > 0 ? 
+              'No students found matching your search.' : 
+              'No students registered yet.'}
+          </p>
         ) : (
           <div className="students-grid">
-            {students.map((student) => {
+            {filteredStudents.map((student) => {
               const studentId = getStudentId(student);
-              console.log('Rendering student card with key:', studentId);
               return (
                 <div key={studentId} className="student-card">
-                  <div className="student-info">
+                  <div className="student-card-header">
                     <h4>{student.fullName}</h4>
-                    <p className="student-email">{student.email}</p>
-                    <p className="student-course">{student.course}</p>
-                    <p className="student-id">ID: {studentId}</p>
+                    <span className="student-id-badge">
+                      ID: {studentId.substring(0, 8)}...
+                    </span>
                   </div>
+                  
+                  <div className="student-info">
+                    <div className="info-row">
+                      <span className="label">Email:</span>
+                      <span className="value">{student.email}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Course:</span>
+                      <span className="value">{student.course}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Full ID:</span>
+                      <div className="id-with-copy">
+                        <code className="student-id">{studentId}</code>
+                        <button 
+                          className="btn-copy"
+                          onClick={() => copyToClipboard(studentId)}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <div className="student-actions">
                     <button 
                       className="btn-edit" 

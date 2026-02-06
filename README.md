@@ -1,6 +1,6 @@
-# Erisn-AT
-MERN-Simple Student Management System
-# Erisn-AT
+
+# Assessment Task: ERISN Graduate Programme
+
 MERN Simple Student Management System
 
 ## Project Overview

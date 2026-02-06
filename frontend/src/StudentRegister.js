@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
+import React, { useState } from 'react';
+import './StudentRegister.css';
 
-// Student Register Component (inline for now)
 function StudentRegister() {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -117,7 +116,7 @@ function StudentRegister() {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchStudents();
   }, []);
 
@@ -219,46 +218,4 @@ function StudentRegister() {
   );
 }
 
-// Main App Component
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <div className="logo-container">
-          <img src="/grad.png" className="App-logo" alt="ERISN Graduate Programme" />
-          <h1 className="app-title">ERISN Graduate Programme</h1>
-        </div>
-      </header>
-      <main className="main-content">
-
-        <section className="developer-info">
-          <div className="info-card">
-            <h3>Applicant Information</h3>
-            <div className="info-content">
-              <p><strong>Name:</strong> Sinalo Alizwa Ntlangamiso</p>
-              <p><strong>Role:</strong> Aspiring Software Backend Developer</p>
-              <p><strong>Tech Stack:</strong></p>
-              <ul className="tech-stack">
-                <li>Spring Boot (Java)</li>
-                <li>Node.js</li>
-                <li>Express.js</li>
-                <li>React.js</li>
-                <li>MongoDB</li>
-                <li>CSS</li>
-              </ul>
-              <p className="assignment-label">ERISN Graduate Programme Assignment</p>
-            </div>
-          </div>
-        </section>
-
-        <StudentRegister />
-      </main>
-
-      <footer className="app-footer">
-        <p>&copy; 2026 ERISN Graduate Programme.</p>
-      </footer>
-    </div>
-  );
-}
-
-export default App;
+export default StudentRegister;

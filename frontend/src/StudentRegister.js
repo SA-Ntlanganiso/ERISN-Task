@@ -11,28 +11,18 @@ function StudentRegister() {
   });
 
   const [students, setStudents] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const extractId = (id) => {
-    if (!id) {
-      console.log('extractId: id is null/undefined');
-      return '';
-    }
-    
-    if (typeof id === 'string') {
-      console.log('extractId: id is string:', id);
-      return id;
-    }
-    
-    if (typeof id === 'object' && id.$oid) {
-      console.log('extractId: id has $oid:', id.$oid);
-      return id.$oid;
-    }
-    
-    const stringId = String(id);
-    console.log('extractId: converting to string:', stringId);
-    return stringId;
+    if (!id) return '';
+    if (typeof id === 'string') return id;
+    if (typeof id === 'object' && id.$oid) return id.$oid;
+    return String(id);
   };
 
   const handleChange = (e) => {
@@ -45,137 +35,184 @@ function StudentRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
 
     try {
       if (editingId) {
-        console.log('Updating student with ID:', editingId);
         const response = await fetch(`http://localhost:8080/api/students/${editingId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
 
         if (response.ok) {
           const updatedStudent = await response.json();
-          setStudents(students.map(student => {
-            const studentId = extractId(student._id);
-            return studentId === editingId ? updatedStudent : student;
-          }));
+          setStudents(students.map(student => 
+            extractId(student._id) === editingId ? updatedStudent : student
+          ));
           alert('Student updated successfully!');
         } else {
-          const errorText = await response.text();
-          console.error('Update failed:', errorText);
-          alert('Failed to update student. Please try again.');
+          throw new Error('Failed to update student');
         }
       } else {
         const response = await fetch('http://localhost:8080/api/students', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
 
         if (response.ok) {
           const newStudent = await response.json();
-          setStudents([...students, newStudent]);
+          setStudents([newStudent, ...students]);
           alert('Student registered successfully!');
         } else {
-          const errorText = await response.text();
-          console.error('Create failed:', errorText);
-          alert('Failed to register student. Please try again.');
+          throw new Error('Failed to register student');
         }
       }
 
-      // Reset form
       setFormData({ fullName: '', email: '', course: '' });
       setEditingId(null);
       setIsFormVisible(false);
-      fetchStudents(); 
     } catch (error) {
-      console.error('Error:', error);
+      setError(error.message);
       alert('Failed to save student. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleEdit = (student) => {
-    console.log('Editing student:', student);
-    console.log('Student _id object:', student._id);
-    
     setFormData({
       fullName: student.fullName,
       email: student.email,
       course: student.course
     });
-    
-    // Extract the ID string properly
-    const idString = extractId(student._id);
-    console.log('Setting editingId to:', idString);
-    setEditingId(idString);
+    setEditingId(extractId(student._id));
     setIsFormVisible(true);
   };
 
   const handleDelete = async (id) => {
-    console.log('handleDelete called with id:', id);
-    console.log('id type:', typeof id);
-    console.log('id object:', JSON.stringify(id));
-    
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      try {
-        // Extract ID string properly
-        const idString = extractId(id);
-        console.log('Deleting student with ID:', idString);
-        
-        const response = await fetch(`http://localhost:8080/api/students/${idString}`, {
-          method: 'DELETE',
-        });
+    if (!window.confirm('Are you sure you want to delete this student?')) return;
 
-        if (response.ok) {
-          setStudents(students.filter(student => {
-            const studentId = extractId(student._id);
-            return studentId !== idString;
-          }));
-          alert('Student deleted successfully!');
-        } else {
-          const errorText = await response.text();
-          console.error('Delete failed:', errorText);
-          alert('Failed to delete student. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to delete student. Please try again.');
+    setIsLoading(true);
+    try {
+      const idString = extractId(id);
+      const response = await fetch(`http://localhost:8080/api/students/${idString}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setStudents(students.filter(student => 
+          extractId(student._id) !== idString
+        ));
+        alert('Student deleted successfully!');
+      } else {
+        throw new Error('Failed to delete student');
       }
+    } catch (error) {
+      setError(error.message);
+      alert('Failed to delete student. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const fetchStudents = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const response = await fetch('http://localhost:8080/api/students');
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched students:', data);
-        console.log('First student _id:', data[0]?._id);
-        console.log('First student _id type:', typeof data[0]?._id);
         setStudents(data);
+        setFilteredStudents(data);
       } else {
-        console.error('Failed to fetch students:', response.status);
+        throw new Error('Failed to fetch students');
       }
     } catch (error) {
-      console.error('Error fetching students:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSearchResults = (searchResults) => {
-    setStudents(searchResults);
+  const handleSearch = async (searchParams) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let url = 'http://localhost:8080/api/students';
+      let params = new URLSearchParams();
+      
+      if (searchParams.keyword) {
+        url = 'http://localhost:8080/api/students/search';
+        params.append('keyword', searchParams.keyword);
+      } else if (searchParams.name) {
+        url = 'http://localhost:8080/api/students/search/name';
+        params.append('name', searchParams.name);
+      } else if (searchParams.email) {
+        url = 'http://localhost:8080/api/students/search/email';
+        params.append('email', searchParams.email);
+      } else if (searchParams.course) {
+        url = 'http://localhost:8080/api/students/search/course';
+        params.append('course', searchParams.course);
+      }
+      
+      const response = await fetch(`${url}?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setFilteredStudents(data);
+      } else {
+        throw new Error('Search failed');
+      }
+    } catch (error) {
+      setError(error.message);
+      alert('Search failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickSearch = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredStudents(students);
+      return;
+    }
+    
+    const filtered = students.filter(student => 
+      student.fullName.toLowerCase().includes(query) ||
+      student.email.toLowerCase().includes(query) ||
+      student.course.toLowerCase().includes(query)
+    );
+    setFilteredStudents(filtered);
+  };
+
+  const resetForm = () => {
+    setFormData({ fullName: '', email: '', course: '' });
+    setEditingId(null);
+    setIsFormVisible(false);
+    setError(null);
   };
 
   const toggleForm = () => {
-    setIsFormVisible(!isFormVisible);
     if (isFormVisible) {
-      setFormData({ fullName: '', email: '', course: '' });
-      setEditingId(null);
+      resetForm();
+    } else {
+      setIsFormVisible(true);
+    }
+  };
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -183,129 +220,196 @@ function StudentRegister() {
     fetchStudents();
   }, []);
 
-  // Function to copy ID to clipboard
-  const copyToClipboard = (id) => {
-    const idString = extractId(id);
-    navigator.clipboard.writeText(idString)
-      .then(() => {
-        alert('ID copied to clipboard!');
-      })
-      .catch(err => {
-        console.error('Failed to copy ID:', err);
-      });
-  };
-
   return (
     <section className="student-register-section">
       <div className="section-header">
-        <h2 className="section-title">Student Registration</h2>
-        <button 
-          className="btn-toggle-form" 
-          onClick={toggleForm}
-        >
-          {isFormVisible ? 'Cancel' : 'Register New Student'}
-        </button>
+        <h2 className="section-title">Student Management System</h2>
+        <div className="header-actions">
+          <div className="quick-search">
+            <input
+              type="text"
+              placeholder="Quick search by name, email, or course..."
+              value={searchQuery}
+              onChange={handleQuickSearch}
+              className="quick-search-input"
+            />
+          </div>
+          <button 
+            className={`btn-toggle-form ${editingId ? 'editing' : ''}`} 
+            onClick={toggleForm}
+          >
+            {editingId ? 'Cancel Edit' : isFormVisible ? 'Cancel' : '➕ Add New Student'}
+          </button>
+        </div>
       </div>
 
+      {error && (
+        <div className="error-message">
+          Error: {error}
+        </div>
+      )}
+
       {isFormVisible && (
-        <div className="registration-form-container">
-          <h3>{editingId ? 'Edit Student' : 'Register Student'}</h3>
+        <div className="registration-form-container slide-in">
+          <h3>
+            {editingId ? 
+              `Editing Student #${editingId.substring(0, 8)}...` : 
+              'Register New Student'
+            }
+          </h3>
           <form className="registration-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="fullName">Full Name:</label>
+              <label htmlFor="fullName">Full Name *</label>
               <input
                 type="text"
                 id="fullName"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="Enter full name"
+                placeholder="John Doe"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="email">Email Address:</label>
+              <label htmlFor="email">Email Address *</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="Enter email address"
+                placeholder="john@example.com"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="course">Course:</label>
+              <label htmlFor="course">Course *</label>
               <input
                 type="text"
                 id="course"
                 name="course"
                 value={formData.course}
                 onChange={handleChange}
-                placeholder="Enter course name"
+                placeholder="Computer Science"
                 required
+                disabled={isLoading}
               />
             </div>
 
-            <button type="submit" className="btn-submit">
-              {editingId ? 'Update Student' : 'Register Student'}
-            </button>
+            <div className="form-actions">
+              <button 
+                type="submit" 
+                className="btn-submit" 
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : editingId ? 'Update Student' : 'Register Student'}
+              </button>
+              <button 
+                type="button" 
+                className="btn-cancel" 
+                onClick={resetForm}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      <DSFilters onSearch={handleSearchResults} />
+      <DSFilters onSearch={handleSearch} />
 
       <div className="students-list">
         <div className="students-list-header">
           <h3>Registered Students</h3>
-          <div className="students-count">
-            {students.length} student{students.length !== 1 ? 's' : ''} found
+          <div className="stats">
+            <span className="total-students">
+              Total: {students.length} student{students.length !== 1 ? 's' : ''}
+            </span>
+            <span className="showing-students">
+              Showing: {filteredStudents.length}
+            </span>
+            {searchQuery && (
+              <span className="search-indicator">
+                Searching for: "{searchQuery}"
+              </span>
+            )}
           </div>
         </div>
         
-        {students.length === 0 ? (
-          <p className="no-students">No students registered yet. Register a new student to get started.</p>
+        {isLoading && !isFormVisible ? (
+          <div className="loading">Loading students...</div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="no-results">
+            {searchQuery ? 
+              'No students found matching your search.' : 
+              'No students registered yet. Add your first student!'
+            }
+          </div>
         ) : (
           <div className="students-grid">
-            {students.map((student) => {
+            {filteredStudents.map((student) => {
               const studentId = extractId(student._id);
-              console.log('Rendering student with ID:', studentId);
               return (
                 <div key={studentId} className="student-card">
-                  <div className="student-info">
+                  <div className="student-card-header">
                     <h4>{student.fullName}</h4>
-                    <p className="student-email">{student.email}</p>
-                    <p className="student-course">{student.course}</p>
-                    <div className="student-id-section">
-                      <span className="id-label">MongoDB ID:</span>
-                      <div className="id-container">
-                        <code className="student-id">{studentId}</code>
+                    <span className="student-id-badge">
+                      ID: {studentId.substring(0, 8)}...
+                    </span>
+                  </div>
+                  
+                  <div className="student-info">
+                    <div className="info-row">
+                      <span className="label">Email:</span>
+                      <span className="value">{student.email}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">Course:</span>
+                      <span className="value">{student.course}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="label">MongoDB ID:</span>
+                      <div className="id-with-copy">
+                        <code className="student-id">
+                          {studentId}
+                        </code>
                         <button 
-                          className="btn-copy-id"
-                          onClick={() => copyToClipboard(student._id)}
-                          title="Copy ID to clipboard"
+                          className="btn-copy"
+                          onClick={() => copyToClipboard(studentId)}
+                          title="Copy full ID"
                         >
-                          📋
+                        Copy
                         </button>
                       </div>
                     </div>
                   </div>
+                  
                   <div className="student-actions">
                     <button 
-                      className="btn-edit" 
+                      className="btn-action btn-edit"
                       onClick={() => handleEdit(student)}
+                      title="Edit student"
                     >
-                      Edit
+                    Edit
                     </button>
                     <button 
-                      className="btn-delete" 
+                      className="btn-action btn-delete"
                       onClick={() => handleDelete(student._id)}
+                      title="Delete student"
                     >
-                      Delete
+                    Delete
+                    </button>
+                    <button 
+                      className="btn-action btn-view"
+                      onClick={() => alert(`Viewing details for ${student.fullName}`)}
+                      title="View details"
+                    >
+                      View
                     </button>
                   </div>
                 </div>

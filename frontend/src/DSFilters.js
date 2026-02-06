@@ -9,7 +9,6 @@ function DSFilters({ onSearch }) {
   const handleSearch = async (e) => {
     e.preventDefault();
     
-    // If search term is empty, fetch all students
     if (!searchTerm.trim()) {
       setIsSearching(true);
       try {
@@ -30,7 +29,6 @@ function DSFilters({ onSearch }) {
       return;
     }
 
-    // Perform search based on selected type
     setIsSearching(true);
     try {
       let url;
@@ -143,15 +141,7 @@ function DSFilters({ onSearch }) {
         </div>
       </form>
       
-      <div className="search-tips">
-        <p className="tips-title">💡 Search Tips:</p>
-        <ul className="tips-list">
-          <li>Search by name: "John" or "John Doe"</li>
-          <li>Search by email: "example@domain.com"</li>
-          <li>Search by course: "Computer Science" or "Engineering"</li>
-          <li>Use "All Fields" for broader search across all student information</li>
-        </ul>
-      </div>
+     
     </div>
   );
 }

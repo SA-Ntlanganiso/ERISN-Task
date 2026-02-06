@@ -8,6 +8,9 @@ A simple student management system built with the MERN stack (MongoDB, Express.j
 
 ## Application Images
 
+### 0. API Endpoints
+![API Endpoints](https://github.com/SA-Ntlanganiso/ERISN-Task/blob/main/seacrh-filte_get_endpoint.PNG)
+
 ### 1. API Endpoints
 ![API Endpoints](https://github.com/SA-Ntlanganiso/ERISN-Task/blob/main/endpoint_image.PNG)
 

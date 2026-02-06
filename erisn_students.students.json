@@ -1,0 +1,18 @@
+[{
+  "_id": {
+    "$oid": "6985c7ff5c41e924e6633fed"
+  },
+  "fullName": "Sinalo Alizwa Ntlangamiso",
+  "email": "222730619@tut4life.ac.za",
+  "course": "Advanced Diploma in Computer Science (Application Development)",
+  "_class": "com.erisn.erisn.model.Student"
+},
+{
+  "_id": {
+    "$oid": "6985c9645c41e924e6633fee"
+  },
+  "fullName": "Jerry Adonis",
+  "email": "jerry.adonisi@wslm.gov.za",
+  "course": "Advanced Diploma in Network Engineering",
+  "_class": "com.erisn.erisn.model.Student"
+}]

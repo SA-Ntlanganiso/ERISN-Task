@@ -32,10 +32,17 @@ build/
 ### VS Code ###
 .vscode/
 
+### Backend Resources - Configuration Files ###
+# Application properties and YAML files (contains sensitive data)
+**/src/main/resources/application.properties
+**/src/main/resources/application.yml
+**/src/main/resources/application-*.properties
+**/src/main/resources/application-*.yml
 
-#backedn resources
-.application.properties
-.application.yml
-.application-*.properties
-.application-*.yml
-.pom.xml
+# Environment-specific configs
+**/src/main/resources/application-dev.properties
+**/src/main/resources/application-prod.properties
+**/src/main/resources/application-local.properties
+
+# Don't ignore pom.xml - you need this in version control!
+# pom.xml should NOT be ignored

@@ -14,26 +14,22 @@ function StudentRegister() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Helper function to extract ID string from various ID formats
   const extractId = (id) => {
     if (!id) {
       console.log('extractId: id is null/undefined');
       return '';
     }
     
-    // If it's already a string, return it
     if (typeof id === 'string') {
       console.log('extractId: id is string:', id);
       return id;
     }
     
-    // If it's an object with $oid property (MongoDB format)
     if (typeof id === 'object' && id.$oid) {
       console.log('extractId: id has $oid:', id.$oid);
       return id.$oid;
     }
     
-    // Last resort: convert to string
     const stringId = String(id);
     console.log('extractId: converting to string:', stringId);
     return stringId;
@@ -261,7 +257,6 @@ function StudentRegister() {
         </div>
       )}
 
-      {/* Add Search Component */}
       <DSFilters onSearch={handleSearchResults} />
 
       <div className="students-list">
